@@ -36,6 +36,7 @@ endif
 clean:
 	rm -f dwm ${OBJ} dwm-${VERSION}.tar.gz
 	rm -f dwm-msg
+	rm -f config.h patches.h
 
 dist: clean
 	mkdir -p dwm-${VERSION}
@@ -51,7 +52,7 @@ install: all
 ifdef YAJLLIBS
 	cp -f dwm-msg ${DESTDIR}${PREFIX}/bin
 endif
-	#cp -f patch/dwmc ${DESTDIR}${PREFIX}/bin
+	cp -f patch/dwmc ${DESTDIR}${PREFIX}/bin
 	chmod 755 ${DESTDIR}${PREFIX}/bin/dwm
 ifdef YAJLLIBS
 	chmod 755 ${DESTDIR}${PREFIX}/bin/dwm-msg
