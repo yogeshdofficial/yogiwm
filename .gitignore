@@ -1,0 +1,30 @@
+# Build artifacts
+/build/
+/*.o
+/*.so
+/*.a
+/*.out
+/*.dylib
+/*.dll
+/*.exe
+
+# Binaries
+/yogiwm
+
+# Logs
+*.log
+
+# Debugging
+core
+*.core
+vgcore.*
+
+# Editors / IDE
+*.swp
+*.swo
+*~
+# .vscode/
+.idea/
+
+# Generated files
+compile_commands.json
