@@ -1,79 +1,118 @@
-.POSIX:
-.SUFFIXES:
+NAME := yogiwm
 
-include config.mk
+SRC_DIR   := src
+LIB_DIR   := lib
+BUILD_DIR := build
+BIN_DIR   := bin
 
-# flags for compiling
-DWLCPPFLAGS = -I. -DWLR_USE_UNSTABLE -D_POSIX_C_SOURCE=200809L \
-	-DVERSION=\"$(VERSION)\" $(XWAYLAND)
-DWLDEVCFLAGS = -g -Wpedantic -Wall -Wextra -Wdeclaration-after-statement \
-	-Wno-unused-parameter -Wshadow -Wunused-macros -Werror=strict-prototypes \
-	-Werror=implicit -Werror=return-type -Werror=incompatible-pointer-types \
-	-Wfloat-conversion
+PROTO_GEN_DIR := protocols/generated
 
-# CFLAGS / LDFLAGS
-PKGS      = wayland-server xkbcommon libinput $(XLIBS)
-DWLCFLAGS = `$(PKG_CONFIG) --cflags $(PKGS)` $(WLR_INCS) $(DWLCPPFLAGS) $(DWLDEVCFLAGS) $(CFLAGS)
-LDLIBS    = `$(PKG_CONFIG) --libs $(PKGS)` $(WLR_LIBS) -lm $(LIBS)
+CC := gcc
+PKG_CONFIG := pkg-config
+WAYLAND_SCANNER := wayland-scanner
 
-all: dwl
-dwl: dwl.o util.o
-	$(CC) dwl.o util.o $(DWLCFLAGS) $(LDFLAGS) $(LDLIBS) -o $@
-dwl.o: dwl.c client.h config.h config.mk cursor-shape-v1-protocol.h \
-	pointer-constraints-unstable-v1-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
-	wlr-output-power-management-unstable-v1-protocol.h xdg-shell-protocol.h
-util.o: util.c util.h
+PKGS := wlroots-0.19 wayland-server xkbcommon libinput wayland-protocols xcb xcb-icccm
+DEBUG ?= 0
 
-# wayland-scanner is a tool which generates C headers and rigging for Wayland
-# protocols, which are specified in XML. wlroots requires you to rig these up
-# to your build system yourself and provide them in the include path.
-WAYLAND_SCANNER   = `$(PKG_CONFIG) --variable=wayland_scanner wayland-scanner`
-WAYLAND_PROTOCOLS = `$(PKG_CONFIG) --variable=pkgdatadir wayland-protocols`
+WAYLAND_PROTOCOLS := $(shell $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols)
 
-cursor-shape-v1-protocol.h:
-	$(WAYLAND_SCANNER) enum-header \
-		$(WAYLAND_PROTOCOLS)/staging/cursor-shape/cursor-shape-v1.xml $@
-pointer-constraints-unstable-v1-protocol.h:
-	$(WAYLAND_SCANNER) enum-header \
-		$(WAYLAND_PROTOCOLS)/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml $@
-wlr-layer-shell-unstable-v1-protocol.h:
-	$(WAYLAND_SCANNER) enum-header \
-		protocols/wlr-layer-shell-unstable-v1.xml $@
-wlr-output-power-management-unstable-v1-protocol.h:
+# -----------------------------------------------------------------------------
+# Generated protocol headers
+# -----------------------------------------------------------------------------
+PROTO_HDRS := \
+	$(PROTO_GEN_DIR)/xdg-shell-protocol.h \
+	$(PROTO_GEN_DIR)/wlr-layer-shell-unstable-v1-protocol.h \
+	$(PROTO_GEN_DIR)/cursor-shape-v1-protocol.h \
+	$(PROTO_GEN_DIR)/wlr-output-power-management-unstable-v1-protocol.h \
+	$(PROTO_GEN_DIR)/pointer-constraints-unstable-v1-protocol.h
+
+# -----------------------------------------------------------------------------
+# Sources
+# -----------------------------------------------------------------------------
+SRCS := $(sort \
+	$(wildcard $(SRC_DIR)/*.c) \
+	$(wildcard $(LIB_DIR)/*.c) \
+	$(wildcard $(LIB_DIR)/*/*.c))
+
+OBJS := $(addprefix $(BUILD_DIR)/,$(SRCS:.c=.o))
+DEPS := $(OBJS:.o=.d)
+
+PKG_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PKGS))
+PKG_LIBS   := $(shell $(PKG_CONFIG) --libs   $(PKGS))
+
+# -----------------------------------------------------------------------------
+# Flags
+# -----------------------------------------------------------------------------
+CPPFLAGS := \
+	-I. -Iinclude -I$(SRC_DIR) -I$(LIB_DIR) -I$(PROTO_GEN_DIR) \
+	-DWLR_USE_UNSTABLE -DXWAYLAND
+
+CFLAGS := $(PKG_CFLAGS) -Wall -Wextra -Wpedantic
+
+ifeq ($(DEBUG),1)
+CFLAGS += -O0 -g -Wshadow -Werror=implicit -Werror=return-type
+else
+CFLAGS += -Os
+endif
+
+LDLIBS := $(PKG_LIBS) -lm
+
+# -----------------------------------------------------------------------------
+# Targets
+# -----------------------------------------------------------------------------
+all: $(BIN_DIR)/$(NAME)
+
+debug:
+	$(MAKE) DEBUG=1
+
+$(BIN_DIR)/$(NAME): $(PROTO_HDRS) $(OBJS) | $(BIN_DIR)
+	$(CC) $(OBJS) -o $@ $(LDLIBS)
+
+# -----------------------------------------------------------------------------
+# Protocol generation
+# -----------------------------------------------------------------------------
+
+$(PROTO_GEN_DIR)/xdg-shell-protocol.h:
+	mkdir -p $(PROTO_GEN_DIR)
 	$(WAYLAND_SCANNER) server-header \
-		protocols/wlr-output-power-management-unstable-v1.xml $@
-xdg-shell-protocol.h:
-	$(WAYLAND_SCANNER) server-header \
-		$(WAYLAND_PROTOCOLS)/stable/xdg-shell/xdg-shell.xml $@
+	$(WAYLAND_PROTOCOLS)/stable/xdg-shell/xdg-shell.xml $@
 
-config.h:
-	cp config.def.h $@
+$(PROTO_GEN_DIR)/cursor-shape-v1-protocol.h:
+	mkdir -p $(PROTO_GEN_DIR)
+	$(WAYLAND_SCANNER) server-header \
+	$(WAYLAND_PROTOCOLS)/staging/cursor-shape/cursor-shape-v1.xml $@
+
+$(PROTO_GEN_DIR)/wlr-layer-shell-unstable-v1-protocol.h:
+	mkdir -p $(PROTO_GEN_DIR)
+	$(WAYLAND_SCANNER) server-header \
+	protocols/xml/wlr-layer-shell-unstable-v1.xml $@
+
+
+$(PROTO_GEN_DIR)/wlr-output-power-management-unstable-v1-protocol.h:
+	mkdir -p $(PROTO_GEN_DIR)
+	$(WAYLAND_SCANNER) server-header \
+	protocols/xml/wlr-output-power-management-unstable-v1.xml $@
+
+$(PROTO_GEN_DIR)/pointer-constraints-unstable-v1-protocol.h:
+	mkdir -p $(PROTO_GEN_DIR)
+	$(WAYLAND_SCANNER) server-header \
+	$(WAYLAND_PROTOCOLS)/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml $@
+
+
+
+# -----------------------------------------------------------------------------
+# Build rules
+# -----------------------------------------------------------------------------
+$(BUILD_DIR)/%.o: %.c
+	mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
+
+$(BIN_DIR):
+	mkdir -p $@
+
 clean:
-	rm -f dwl *.o *-protocol.h
+	rm -rf $(BUILD_DIR) $(BIN_DIR) $(PROTO_GEN_DIR)
 
-dist: clean
-	mkdir -p dwl-$(VERSION)
-	cp -R LICENSE* Makefile CHANGELOG.md README.md client.h config.def.h \
-		config.mk protocols dwl.1 dwl.c util.c util.h dwl.desktop \
-		dwl-$(VERSION)
-	tar -caf dwl-$(VERSION).tar.gz dwl-$(VERSION)
-	rm -rf dwl-$(VERSION)
+-include $(DEPS)
 
-install: dwl
-	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	rm -f $(DESTDIR)$(PREFIX)/bin/dwl
-	cp -f dwl $(DESTDIR)$(PREFIX)/bin
-	chmod 755 $(DESTDIR)$(PREFIX)/bin/dwl
-	mkdir -p $(DESTDIR)$(MANDIR)/man1
-	cp -f dwl.1 $(DESTDIR)$(MANDIR)/man1
-	chmod 644 $(DESTDIR)$(MANDIR)/man1/dwl.1
-	mkdir -p $(DESTDIR)$(DATADIR)/wayland-sessions
-	cp -f dwl.desktop $(DESTDIR)$(DATADIR)/wayland-sessions/dwl.desktop
-	chmod 644 $(DESTDIR)$(DATADIR)/wayland-sessions/dwl.desktop
-uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/dwl $(DESTDIR)$(MANDIR)/man1/dwl.1 \
-		$(DESTDIR)$(DATADIR)/wayland-sessions/dwl.desktop
-
-.SUFFIXES: .c .o
-.c.o:
-	$(CC) $(CPPFLAGS) $(DWLCFLAGS) -o $@ -c $<
+.PHONY: all clean debug
