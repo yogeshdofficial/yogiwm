@@ -1,12 +1,10 @@
-use std::sync::{Arc, Mutex};
 
 use color_eyre::eyre::Result;
-use crossbeam_channel::unbounded;
 use tracing_subscriber::EnvFilter;
 
 use crate::{
     platform_event::PlatformEvent, win_event_listener::start,
-    window_event_handler::handle_window_event, wm::WM,
+    window_event_handler::handle_window_event,
 };
 
 mod event_channel;

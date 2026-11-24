@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, sync::OnceLock};
+use std::sync::OnceLock;
 
 use crossbeam_channel::{Sender, unbounded};
 
@@ -10,7 +10,7 @@ pub fn initialize() -> crossbeam_channel::Receiver<PlatformEvent> {
     let (tx, rx) = unbounded();
     EVENT_TX.set(tx).expect("cannot initialize event channel");
 
-    return rx;
+    rx
 }
 
 pub fn send(wm_event: PlatformEvent) {

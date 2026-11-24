@@ -1,7 +1,4 @@
-use crate::platform_event::{
-    PlatformEvent::{self, Window},
-    WindowEvent,
-};
+use crate::platform_event::WindowEvent;
 
 pub fn handle_window_event(window_event: WindowEvent) {
     tracing::info!(
