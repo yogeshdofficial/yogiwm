@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["crates/wm"]
+[workspace.dependencies]
+
+tracing = "0.1.44"
+windows = { version = "0.62.2", features = [
+    "Win32",
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Accessibility",
+] }
+crossbeam-channel = "0.5.17"
+color-eyre = "0.6"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+strum_macros = "0.28.0"
