@@ -1,19 +1,18 @@
-use color_eyre::eyre::{self, Error};
 use crossbeam_channel::{Receiver, Sender};
 
-use crate::win_manager_event::WinManagerEvent;
+use crate::platform_event::PlatformEvent;
 
 pub struct WM {
-    event_tx: Sender<WinManagerEvent>,
-    event_rx: Receiver<WinManagerEvent>,
+    event_tx: Sender<PlatformEvent>,
+    event_rx: Receiver<PlatformEvent>,
 }
 
 impl WM {
-    pub fn new() -> eyre::Result<Self> {
+    pub fn new() -> Self {
         let channel = crossbeam_channel::bounded(20);
-        Ok(Self {
+        Self {
             event_rx: channel.1,
             event_tx: channel.0,
-        })
+        }
     }
 }

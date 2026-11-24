@@ -3,7 +3,8 @@ use std::thread::JoinHandle;
 use windows::Win32::UI::{
     Accessibility::SetWinEventHook,
     WindowsAndMessaging::{
-        DispatchMessageW, EVENT_MAX, EVENT_MIN, GetMessageW, MSG, WINEVENT_OUTOFCONTEXT,
+        DispatchMessageW, EVENT_MAX, EVENT_MIN, GetMessageW, MSG, TranslateMessage,
+        WINEVENT_OUTOFCONTEXT,
     },
 };
 
@@ -28,8 +29,8 @@ pub fn start() -> JoinHandle<()> {
 
         loop {
             tracing::debug!("Waiting for message...");
-
-            let result = unsafe { GetMessageW(&mut msg, None, 0, 0) };
+            // TODO ERROR HANDLING
+            let result = unsafe { GetMessageW(&raw mut msg, None, 0, 0) };
             tracing::debug!("GetMessageW returned");
 
             if result.0 == -1 {
@@ -44,7 +45,8 @@ pub fn start() -> JoinHandle<()> {
 
             tracing::debug!("Message received: {}", msg.message);
             unsafe {
-                DispatchMessageW(&msg);
+                let _ = TranslateMessage(&raw const msg);
+                DispatchMessageW(&raw const msg);
             }
         }
     })

@@ -1,15 +1,21 @@
 use std::sync::{Arc, Mutex};
 
 use color_eyre::eyre::Result;
+use crossbeam_channel::unbounded;
 use tracing_subscriber::EnvFilter;
 
-use crate::{win_event_listener::start, wm::WM};
+use crate::{
+    platform_event::PlatformEvent, win_event_listener::start,
+    window_event_handler::handle_window_event, wm::WM,
+};
 
+mod event_channel;
+mod platform_event;
 mod win_event;
 mod win_event_listener;
 mod win_hook_callback;
-mod win_manager_event;
 mod window;
+mod window_event_handler;
 mod wm;
 
 fn main() -> Result<()> {
@@ -19,11 +25,22 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .pretty()
+        .with_target(false)
         .init();
 
     // start_wm();
-    let _ = start().join();
-    let wm = Arc::new(Mutex::new(WM::new()));
+    let rx = event_channel::initialize();
+
+    let _ = start();
+
+    // let wm = Arc::new(Mutex::new(WM::new()));
+
+    while let Ok(event) = rx.recv() {
+        match event {
+            PlatformEvent::Window(window_event) => handle_window_event(window_event),
+        }
+        // tracing::trace!(?event, "PlatformEvent received in event loop");
+    }
 
     Ok(())
 }
