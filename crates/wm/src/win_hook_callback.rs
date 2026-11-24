@@ -1,4 +1,3 @@
-
 use windows::Win32::{
     Foundation::HWND,
     UI::{
